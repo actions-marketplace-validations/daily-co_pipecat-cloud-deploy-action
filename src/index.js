@@ -21,7 +21,6 @@ async function run() {
     const dockerfile = core.getInput("dockerfile");
     const dockerContext = core.getInput("docker-context");
     const dockerBuildArgs = core.getInput("docker-build-args");
-    const dockerPlatform = core.getInput("docker-platform");
 
     // ── Deploy inputs ──────────────────────────────────────────────────
     const imageCredentials = core.getInput("image-credentials");
@@ -44,6 +43,9 @@ async function run() {
 
       core.startGroup("Docker Build & Push");
 
+      // Ensure arm64 images can be built on this runner
+      await docker.setupQEMU();
+
       // Login to registry if credentials are provided
       if (registryUsername && registryPassword) {
         const registry = docker.parseRegistry(image);
@@ -52,8 +54,8 @@ async function run() {
         core.info("No registry credentials provided, skipping docker login");
       }
 
-      // Build the image
-      await docker.build(imageWithTag, dockerfile, dockerContext, dockerBuildArgs, dockerPlatform);
+      // Build the image (always targets linux/arm64 for Pipecat Cloud)
+      await docker.build(imageWithTag, dockerfile, dockerContext, dockerBuildArgs);
 
       // Push the image
       await docker.push(imageWithTag);

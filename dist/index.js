@@ -25855,8 +25855,12 @@ module.exports = { PipecatCloudAPI, removeEmptyValues };
 // SPDX-License-Identifier: BSD 2-Clause License
 // Copyright (c) 2025-2026, Daily
 
+const os = __nccwpck_require__(857);
 const core = __nccwpck_require__(7484);
 const exec = __nccwpck_require__(5236);
+
+// Pipecat Cloud runs on ARM — all images must target this platform.
+const TARGET_PLATFORM = "linux/arm64";
 
 /**
  * Parse the registry hostname from a full image name.
@@ -25880,6 +25884,44 @@ function parseRegistry(image) {
 }
 
 /**
+ * Detect the runner's CPU architecture and set up QEMU for arm64
+ * emulation if the runner is not already arm64.
+ *
+ * If QEMU setup fails, a warning is emitted but execution continues —
+ * the build may still succeed if emulation was configured externally.
+ */
+async function setupQEMU() {
+  const arch = os.arch(); // "x64", "arm64", etc.
+
+  if (arch === "arm64") {
+    core.info("Runner is arm64 — no cross-platform emulation needed");
+    return;
+  }
+
+  core.info(
+    `Runner architecture is ${arch} — setting up QEMU for arm64 emulation`
+  );
+
+  try {
+    await exec.exec("docker", [
+      "run",
+      "--privileged",
+      "--rm",
+      "tonistiigi/binfmt",
+      "--install",
+      "arm64",
+    ]);
+    core.info("QEMU setup complete");
+  } catch (error) {
+    core.warning(
+      `Could not set up QEMU automatically: ${error.message}. ` +
+        "The build will be attempted anyway. If it fails, consider using " +
+        "an arm64 runner or adding docker/setup-qemu-action before this step."
+    );
+  }
+}
+
+/**
  * Log in to a Docker registry.
  *
  * @param {string} registry - Registry hostname
@@ -25897,23 +25939,19 @@ async function login(registry, username, password) {
 }
 
 /**
- * Build a Docker image.
+ * Build a Docker image targeting linux/arm64 for Pipecat Cloud.
  *
  * @param {string} imageWithTag - Full image reference including tag (e.g. ghcr.io/org/bot:abc123)
  * @param {string} dockerfile - Path to the Dockerfile
  * @param {string} context - Docker build context path
  * @param {string} buildArgsStr - Newline-separated build args (e.g. "ARG1=val1\nARG2=val2")
- * @param {string} platform - Target platform (e.g. "linux/arm64")
  */
-async function build(imageWithTag, dockerfile, context, buildArgsStr, platform) {
-  core.info(`Building Docker image: ${imageWithTag}`);
+async function build(imageWithTag, dockerfile, context, buildArgsStr) {
+  core.info(
+    `Building Docker image: ${imageWithTag} (platform: ${TARGET_PLATFORM})`
+  );
 
-  const args = ["build", "-t", imageWithTag, "-f", dockerfile];
-
-  // Set target platform
-  if (platform) {
-    args.push("--platform", platform);
-  }
+  const args = ["build", "-t", imageWithTag, "-f", dockerfile, "--platform", TARGET_PLATFORM];
 
   // Parse and add build args
   if (buildArgsStr) {
@@ -25947,7 +25985,7 @@ async function push(imageWithTag) {
   core.info(`Successfully pushed ${imageWithTag}`);
 }
 
-module.exports = { parseRegistry, login, build, push };
+module.exports = { TARGET_PLATFORM, parseRegistry, setupQEMU, login, build, push };
 
 
 /***/ }),
@@ -27887,7 +27925,6 @@ async function run() {
     const dockerfile = core.getInput("dockerfile");
     const dockerContext = core.getInput("docker-context");
     const dockerBuildArgs = core.getInput("docker-build-args");
-    const dockerPlatform = core.getInput("docker-platform");
 
     // ── Deploy inputs ──────────────────────────────────────────────────
     const imageCredentials = core.getInput("image-credentials");
@@ -27910,6 +27947,9 @@ async function run() {
 
       core.startGroup("Docker Build & Push");
 
+      // Ensure arm64 images can be built on this runner
+      await docker.setupQEMU();
+
       // Login to registry if credentials are provided
       if (registryUsername && registryPassword) {
         const registry = docker.parseRegistry(image);
@@ -27918,8 +27958,8 @@ async function run() {
         core.info("No registry credentials provided, skipping docker login");
       }
 
-      // Build the image
-      await docker.build(imageWithTag, dockerfile, dockerContext, dockerBuildArgs, dockerPlatform);
+      // Build the image (always targets linux/arm64 for Pipecat Cloud)
+      await docker.build(imageWithTag, dockerfile, dockerContext, dockerBuildArgs);
 
       // Push the image
       await docker.push(imageWithTag);

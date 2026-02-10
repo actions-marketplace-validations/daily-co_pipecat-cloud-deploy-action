@@ -80,7 +80,8 @@ These inputs are only used when `build` is set to `true`.
 | `dockerfile`        | `Dockerfile`        | Path to the Dockerfile.                              |
 | `docker-context`    | `.`                 | Docker build context path.                           |
 | `docker-build-args` |                     | Newline-separated build args (e.g. `ARG1=val1`).     |
-| `docker-platform`   |                     | Target platform for the build (e.g. `linux/arm64`).  |
+
+> **ARM builds:** Pipecat Cloud requires all images to target `linux/arm64`. When `build` is enabled, the action automatically passes `--platform linux/arm64` to Docker and sets up QEMU emulation if the runner is not already ARM-based. No extra configuration is needed.
 
 ### Deploy (optional)
 
