@@ -80,6 +80,7 @@ These inputs are only used when `build` is set to `true`.
 | `dockerfile`        | `Dockerfile`        | Path to the Dockerfile.                              |
 | `docker-context`    | `.`                 | Docker build context path.                           |
 | `docker-build-args` |                     | Newline-separated build args (e.g. `ARG1=val1`).     |
+| `docker-platform`   |                     | Target platform for the build (e.g. `linux/arm64`).  |
 
 ### Deploy (optional)
 

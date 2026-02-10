@@ -47,6 +47,10 @@ inputs:
     description: "Newline-separated Docker build args (e.g. ARG1=val1)"
     required: false
     default: ""
+  docker-platform:
+    description: "Target platform for the Docker build (e.g. linux/arm64)"
+    required: false
+    default: ""
 
   # Deploy options
   image-credentials:

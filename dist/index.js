@@ -25903,11 +25903,17 @@ async function login(registry, username, password) {
  * @param {string} dockerfile - Path to the Dockerfile
  * @param {string} context - Docker build context path
  * @param {string} buildArgsStr - Newline-separated build args (e.g. "ARG1=val1\nARG2=val2")
+ * @param {string} platform - Target platform (e.g. "linux/arm64")
  */
-async function build(imageWithTag, dockerfile, context, buildArgsStr) {
+async function build(imageWithTag, dockerfile, context, buildArgsStr, platform) {
   core.info(`Building Docker image: ${imageWithTag}`);
 
   const args = ["build", "-t", imageWithTag, "-f", dockerfile];
+
+  // Set target platform
+  if (platform) {
+    args.push("--platform", platform);
+  }
 
   // Parse and add build args
   if (buildArgsStr) {
@@ -27881,6 +27887,7 @@ async function run() {
     const dockerfile = core.getInput("dockerfile");
     const dockerContext = core.getInput("docker-context");
     const dockerBuildArgs = core.getInput("docker-build-args");
+    const dockerPlatform = core.getInput("docker-platform");
 
     // ── Deploy inputs ──────────────────────────────────────────────────
     const imageCredentials = core.getInput("image-credentials");
@@ -27912,7 +27919,7 @@ async function run() {
       }
 
       // Build the image
-      await docker.build(imageWithTag, dockerfile, dockerContext, dockerBuildArgs);
+      await docker.build(imageWithTag, dockerfile, dockerContext, dockerBuildArgs, dockerPlatform);
 
       // Push the image
       await docker.push(imageWithTag);

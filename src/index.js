@@ -21,6 +21,7 @@ async function run() {
     const dockerfile = core.getInput("dockerfile");
     const dockerContext = core.getInput("docker-context");
     const dockerBuildArgs = core.getInput("docker-build-args");
+    const dockerPlatform = core.getInput("docker-platform");
 
     // ── Deploy inputs ──────────────────────────────────────────────────
     const imageCredentials = core.getInput("image-credentials");
@@ -52,7 +53,7 @@ async function run() {
       }
 
       // Build the image
-      await docker.build(imageWithTag, dockerfile, dockerContext, dockerBuildArgs);
+      await docker.build(imageWithTag, dockerfile, dockerContext, dockerBuildArgs, dockerPlatform);
 
       // Push the image
       await docker.push(imageWithTag);
