@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build and Deploy to Pipecat Cloud
-        uses: pipecat-ai/pipecat-cloud-deploy-action@v1
+        uses: daily-co/pipecat-cloud-deploy-action@v1
         with:
           api-key: ${{ secrets.PIPECAT_API_KEY }}
           agent-name: my-agent
@@ -48,7 +48,7 @@ If you build your image separately (or use another CI step), pass the fully-tagg
 
 ```yaml
 - name: Deploy to Pipecat Cloud
-  uses: pipecat-ai/pipecat-cloud-deploy-action@v1
+  uses: daily-co/pipecat-cloud-deploy-action@v1
   with:
     api-key: ${{ secrets.PIPECAT_API_KEY }}
     agent-name: my-agent
@@ -111,7 +111,7 @@ These inputs are only used when `build` is set to `true`.
 
 ```yaml
 - name: Deploy to Pipecat Cloud
-  uses: pipecat-ai/pipecat-cloud-deploy-action@v1
+  uses: daily-co/pipecat-cloud-deploy-action@v1
   with:
     api-key: ${{ secrets.PIPECAT_API_KEY }}
     agent-name: my-agent
@@ -135,7 +135,7 @@ These inputs are only used when `build` is set to `true`.
 
 ```yaml
 - name: Deploy to Pipecat Cloud
-  uses: pipecat-ai/pipecat-cloud-deploy-action@v1
+  uses: daily-co/pipecat-cloud-deploy-action@v1
   with:
     api-key: ${{ secrets.PIPECAT_API_KEY }}
     agent-name: my-agent
@@ -148,7 +148,7 @@ These inputs are only used when `build` is set to `true`.
 ```yaml
 - name: Deploy
   id: deploy
-  uses: pipecat-ai/pipecat-cloud-deploy-action@v1
+  uses: daily-co/pipecat-cloud-deploy-action@v1
   with:
     api-key: ${{ secrets.PIPECAT_API_KEY }}
     agent-name: my-agent
