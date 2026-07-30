@@ -1,17 +1,17 @@
 # Deploy to Pipecat Cloud — GitHub Action
 
-A GitHub Action that builds, pushes, and deploys your [Pipecat](https://github.com/pipecat-ai/pipecat) agent to [Pipecat Cloud](https://pipecat.daily.co). Use it in your CI/CD workflows to automate deployments whenever you push code.
+A GitHub Action that builds and deploys your [Pipecat](https://github.com/pipecat-ai/pipecat) agent to [Pipecat Cloud](https://pipecat.daily.co). Use it in your CI/CD workflows to automate deployments whenever you push code.
 
 ## Features
 
-- **Build & push** Docker images automatically, or deploy a pre-built image
-- **Zero Docker commands** — the action handles `docker build`, `docker login`, and `docker push` for you
+- **Cloud builds** — build Docker images directly in Pipecat Cloud infrastructure (no Docker or registry needed)
+- **Smart caching** — identical build contexts are detected and reused automatically
 - **Readiness polling** — waits for the deployment to become available before marking the step as successful
 - **Full control** — configure scaling, regions, secrets, and more via action inputs
 
 ## Quick Start
 
-### Build and deploy from source
+### Build and deploy from source (cloud build)
 
 Point the action at your repo (with a `Dockerfile`) and it handles everything:
 
@@ -25,20 +25,15 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      packages: write # needed for GHCR push
     steps:
       - uses: actions/checkout@v4
 
       - name: Build and Deploy to Pipecat Cloud
-        uses: daily-co/pipecat-cloud-deploy-action@v1
+        uses: daily-co/pipecat-cloud-deploy-action@v2
         with:
           api-key: ${{ secrets.PIPECAT_API_KEY }}
           agent-name: my-agent
-          build: true
-          image: ghcr.io/${{ github.repository }}
-          registry-username: ${{ github.actor }}
-          registry-password: ${{ secrets.GITHUB_TOKEN }}
+          cloud-build: true
           secret-set: my-secrets
 ```
 
@@ -48,13 +43,28 @@ If you build your image separately (or use another CI step), pass the fully-tagg
 
 ```yaml
 - name: Deploy to Pipecat Cloud
-  uses: daily-co/pipecat-cloud-deploy-action@v1
+  uses: daily-co/pipecat-cloud-deploy-action@v2
   with:
     api-key: ${{ secrets.PIPECAT_API_KEY }}
     agent-name: my-agent
     image: ghcr.io/my-org/my-bot:v1.2.3
+    image-credentials: my-registry-secret
     secret-set: my-secrets
     region: us-east-1
+```
+
+### Reuse an existing cloud build
+
+If you already have a build ID from a previous run or the `pcc` CLI:
+
+```yaml
+- name: Deploy to Pipecat Cloud
+  uses: daily-co/pipecat-cloud-deploy-action@v2
+  with:
+    api-key: ${{ secrets.PIPECAT_API_KEY }}
+    agent-name: my-agent
+    build-id: build_abc123
+    secret-set: my-secrets
 ```
 
 ## Inputs
@@ -65,66 +75,63 @@ If you build your image separately (or use another CI step), pass the fully-tagg
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `api-key`    | Pipecat Cloud **Private** API key. Store as a [GitHub secret](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions). Must be a Private key, not a Public key. |
 | `agent-name` | Name of the agent to deploy.                                                                                                                                                                                            |
-| `image`      | Docker image name. When `build` is enabled the action auto-appends the tag. When `build` is disabled, must include a tag (e.g. `my-image:v1.0`).                                                                        |
 
-### Docker Build (optional)
+### Cloud Build (optional)
 
-These inputs are only used when `build` is set to `true`.
+| Input           | Default      | Description                                                                  |
+| --------------- | ------------ | ---------------------------------------------------------------------------- |
+| `cloud-build`   | `false`      | Enable Pipecat Cloud Build (builds the image in the cloud).                  |
+| `build-context` | `.`          | Build context directory path.                                                |
+| `dockerfile`    | `Dockerfile` | Path to the Dockerfile (relative to build context).                          |
+| `build-id`      |              | Reuse an existing cloud build ID (skips the build step).                     |
+| `build-timeout` | `600`        | Max seconds to wait for cloud build completion.                              |
 
-| Input               | Default             | Description                                          |
-| ------------------- | ------------------- | ---------------------------------------------------- |
-| `build`             | `false`             | Enable Docker build, tag, and push before deploying. |
-| `registry-username` |                     | Registry username for `docker login`.                |
-| `registry-password` |                     | Registry password or token for `docker login`.       |
-| `tag`               | `${{ github.sha }}` | Image tag. Defaults to the git commit SHA.           |
-| `dockerfile`        | `Dockerfile`        | Path to the Dockerfile.                              |
-| `docker-context`    | `.`                 | Docker build context path.                           |
-| `docker-build-args` |                     | Newline-separated build args (e.g. `ARG1=val1`).     |
+> **No Docker or registry required:** Cloud builds run entirely in Pipecat Cloud infrastructure. You don't need Docker installed on the runner, registry credentials, or `packages: write` permissions.
 
-> **ARM builds:** Pipecat Cloud requires all images to target `linux/arm64`. When `build` is enabled, the action automatically passes `--platform linux/arm64` to Docker and sets up QEMU emulation if the runner is not already ARM-based. No extra configuration is needed.
+### Pre-built Image (optional)
+
+| Input               | Description                                                                         |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| `image`             | Pre-built Docker image with tag (e.g. `ghcr.io/my-org/my-bot:v1.2.3`).             |
+| `image-credentials` | Name of the image pull secret set in Pipecat Cloud (for private registries).        |
 
 ### Deploy (optional)
 
 | Input                 | Default                        | Description                                                  |
 | --------------------- | ------------------------------ | ------------------------------------------------------------ |
-| `image-credentials`   |                                | Name of the image pull secret set in Pipecat Cloud.          |
 | `secret-set`          |                                | Name of the secret set for runtime secrets.                  |
 | `region`              |                                | Deployment region. Uses the organization default if omitted. |
-| `min-agents`          | `0`                            | Minimum agents to keep warm (0–50).                          |
-| `max-agents`          | `10`                           | Maximum concurrent agents (1–50).                            |
+| `min-agents`          | `0`                            | Minimum agents to keep warm (0-50).                          |
+| `max-agents`          | `10`                           | Maximum concurrent agents (1-50).                            |
 | `agent-profile`       |                                | Agent profile name.                                          |
 | `enable-managed-keys` | `false`                        | Enable managed keys.                                         |
+| `max-session-duration`|                                | Max session duration in seconds. When a session reaches this limit, the agent's connection is forcibly closed. |
+| `krisp-viva`          |                                | Enable [Krisp VIVA](https://docs.pipecat.ai/deployment/pipecat-cloud/guides/krisp-viva) voice isolation by specifying an audio filter model (e.g. `tel` or `pro`). |
 | `wait-for-ready`      | `true`                         | Poll until the deployment is ready.                          |
 | `wait-timeout`        | `90`                           | Max seconds to wait for deployment readiness.                |
 | `api-url`             | `https://api.pipecat.daily.co` | Override the Pipecat Cloud API base URL.                     |
 
 ## Outputs
 
-| Output         | Description                                                                 |
-| -------------- | --------------------------------------------------------------------------- |
-| `image`        | The full image reference that was deployed (e.g. `ghcr.io/org/bot:abc123`). |
-| `service-name` | The deployed service/agent name.                                            |
+| Output         | Description                                                 |
+| -------------- | ----------------------------------------------------------- |
+| `build-id`     | The Pipecat Cloud Build ID (when using cloud build).        |
+| `service-name` | The deployed service/agent name.                            |
 
 ## Examples
 
-### Build with custom Dockerfile and build args
+### Cloud build with custom Dockerfile
 
 ```yaml
 - name: Deploy to Pipecat Cloud
-  uses: daily-co/pipecat-cloud-deploy-action@v1
+  uses: daily-co/pipecat-cloud-deploy-action@v2
   with:
     api-key: ${{ secrets.PIPECAT_API_KEY }}
     agent-name: my-agent
-    build: true
-    image: ghcr.io/my-org/my-bot
-    tag: ${{ github.ref_name }}-${{ github.sha }}
+    organization: ${{ vars.PIPECAT_ORG_ID }}
+    cloud-build: true
     dockerfile: docker/Dockerfile.prod
-    docker-context: .
-    docker-build-args: |
-      NODE_ENV=production
-      VERSION=${{ github.sha }}
-    registry-username: ${{ github.actor }}
-    registry-password: ${{ secrets.GITHUB_TOKEN }}
+    build-context: .
     secret-set: prod-secrets
     region: us-east-1
     min-agents: 1
@@ -135,11 +142,12 @@ These inputs are only used when `build` is set to `true`.
 
 ```yaml
 - name: Deploy to Pipecat Cloud
-  uses: daily-co/pipecat-cloud-deploy-action@v1
+  uses: daily-co/pipecat-cloud-deploy-action@v2
   with:
     api-key: ${{ secrets.PIPECAT_API_KEY }}
     agent-name: my-agent
-    image: ghcr.io/my-org/my-bot:latest
+    organization: ${{ vars.PIPECAT_ORG_ID }}
+    cloud-build: true
     wait-for-ready: false
 ```
 
@@ -148,15 +156,16 @@ These inputs are only used when `build` is set to `true`.
 ```yaml
 - name: Deploy
   id: deploy
-  uses: daily-co/pipecat-cloud-deploy-action@v1
+  uses: daily-co/pipecat-cloud-deploy-action@v2
   with:
     api-key: ${{ secrets.PIPECAT_API_KEY }}
     agent-name: my-agent
-    image: ghcr.io/my-org/my-bot:v1.0.0
+    organization: ${{ vars.PIPECAT_ORG_ID }}
+    cloud-build: true
 
 - name: Print deploy info
   run: |
-    echo "Deployed image: ${{ steps.deploy.outputs.image }}"
+    echo "Build ID: ${{ steps.deploy.outputs.build-id }}"
     echo "Service name: ${{ steps.deploy.outputs.service-name }}"
 ```
 
