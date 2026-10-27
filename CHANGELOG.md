@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.1.4](https://github.com/daily-co/pipecat-cloud-deploy-action/compare/v2.1.3...v2.1.4) (2026-10-05)
+
+
+### Bug Fixes
+
+* address fast-uri and undici vulnerabilities ([#22](https://github.com/daily-co/pipecat-cloud-deploy-action/issues/22)) ([f0d7d12](https://github.com/daily-co/pipecat-cloud-deploy-action/commit/f0d7d12c54cb49c5eb8623a3aca09e2d199cb313))
+
+## [2.1.3](https://github.com/daily-co/pipecat-cloud-deploy-action/compare/v2.1.2...v2.1.3) (2026-09-14)
+
+
+### Bug Fixes
+
+* address dependency vulnerabilities ([#20](https://github.com/daily-co/pipecat-cloud-deploy-action/issues/20)) ([7b0bf92](https://github.com/daily-co/pipecat-cloud-deploy-action/commit/7b0bf927679f9b36849bbb7b62f2853fa5f09220))
+
 ## [2.1.2](https://github.com/daily-co/pipecat-cloud-deploy-action/compare/v2.1.1...v2.1.2) (2026-09-09)
 
 
